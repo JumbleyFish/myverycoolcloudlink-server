@@ -7,7 +7,6 @@ if __name__ == "__main__":
     
     print(f"Starting Cloudlink server on port {port}...")
     
-    # Initialize the Cloudlink server engine directly
-    cl = server(debug=True, port=port, host="0.0.0.0")
-
+    # Initialize the server on Render's specified port and host
+    cl = server(port=port, host="0.0.0.0")
 
