@@ -1,44 +1,56 @@
 import os
-import asyncio
 import json
-import websockets
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import PlainTextResponse
 
-# Keep track of active connections
+app = FastAPI()
 CONNECTED_USERS = set()
 
-async def handler(websocket):
-    # Register new user
+# --- HEALTH CHECK FOR CRON-JOB.ORG ---
+@app.get("/ping")
+async def health_check():
+    return PlainTextResponse("Server Alive")
+
+# --- OFFICIAL CLOUDLINK V4 PROTOCOL TRANSLATOR ---
+@app.websocket("/")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
     CONNECTED_USERS.add(websocket)
-    print(f"A player connected! Total players: {len(CONNECTED_USERS)}")
+    
+    # Cloudlink V4 extension expects a "handshake" packet to successfully connect
+    handshake_packet = {
+        "cmd": "handshake",
+        "val": {
+            "version": "0.2.0.1",
+            "motd": "Custom Cloudlink Server Live!"
+        },
+        "listener": "setup"
+    }
+    await websocket.send_text(json.dumps(handshake_packet))
+    print(f"Player handshaked successfully! Total online: {len(CONNECTED_USERS)}")
     
     try:
-        async for message in websocket:
-            # Parse Cloudlink text protocol packets safely
-            try:
-                data = json.loads(message)
-            except json.JSONDecodeError:
-                data = message
-                
-            # Broadcast the game state packet to every other connected player
-            for user in CONNECTED_USERS:
+        while True:
+            # Listen for continuous game data streams from TurboWarp
+            raw_message = await websocket.receive_text()
+            
+            # Broadcast the data packet to every other player in the room
+            for user in list(CONNECTED_USERS):
                 if user != websocket:
                     try:
-                        await user.send(message)
-                    except websockets.exceptions.ConnectionClosed:
+                        await user.send_text(raw_message)
+                    except Exception:
                         pass
-    except websockets.exceptions.ConnectionClosedError:
+                        
+    except WebSocketDisconnect:
         pass
     finally:
-        # Clean up on player disconnect
-        CONNECTED_USERS.remove(websocket)
-        print(f"A player left. Total players: {len(CONNECTED_USERS)}")
-
-async def main():
-    port = int(os.environ.get("PORT", 10000))
-    print(f"🚀 Custom TurboWarp Server running on port {port}...")
-    async with websockets.serve(handler, "0.0.0.0", port):
-        await asyncio.Future()  # run forever
+        if websocket in CONNECTED_USERS:
+            CONNECTED_USERS.remove(websocket)
+        print(f"Player left. Total online: {len(CONNECTED_USERS)}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
-
+    import uvicorn
+    port = int(os.environ.get("PORT", 10000))
+    # Binds to 0.0.0.0 so Render can instantly detect the port mapping
+    uvicorn.run(app, host="0.0.0.0", port=port)
