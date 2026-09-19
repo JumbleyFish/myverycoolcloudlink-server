@@ -1,3 +1,1 @@
-fastapi
-uvicorn
-websockets
+websockets>=11.0
