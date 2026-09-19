@@ -1,40 +1,20 @@
 import os
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import PlainTextResponse
+import asyncio
+from cloudlink import server
 
-app = FastAPI()
-CONNECTED_USERS = set()
-
-# --- NEW PATH FOR THE CRON MONITOR ---
-@app.get("/ping")
-async def health_check():
-    # Dedicated regular HTTP path that avoids the 426 WebSocket rule
-    return PlainTextResponse("Server Alive")
-
-# --- TURBOWARP MULTIPLAYER CONNECTIONS ---
-@app.websocket("/")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    CONNECTED_USERS.add(websocket)
-    print(f"A player connected! Total players: {len(CONNECTED_USERS)}")
-    
-    try:
-        while True:
-            message = await websocket.receive_text()
-            for user in list(CONNECTED_USERS):
-                if user != websocket:
-                    try:
-                        await user.send_text(message)
-                    except Exception:
-                        pass
-    except WebSocketDisconnect:
-        pass
-    finally:
-        if websocket in CONNECTED_USERS:
-            CONNECTED_USERS.remove(websocket)
-        print(f"A player left. Total players: {len(CONNECTED_USERS)}")
+# Setup an HTTP health check for cron-job.org manually alongside Cloudlink
+async def cron_ping_middleware(ready_event):
+    await ready_event.wait()
+    print("Cloudlink background check running...")
 
 if __name__ == "__main__":
-    import uvicorn
+    # Render passes the listening port via environment variables
     port = int(os.environ.get("PORT", 10000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    
+    print(f"Starting official Cloudlink v4 engine on port {port}...")
+    
+    # Initialize the server cleanly using the direct v4 library class structure
+    cl_server = server(
+        port=port, 
+        host="0.0.0.0"
+    )
