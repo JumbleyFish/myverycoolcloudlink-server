@@ -1,12 +1,13 @@
 import os
-from cloudlink import CloudLink
+import cloudlink
 
 if __name__ == "__main__":
-    # Render and Hugging Face pass the port as an environment variable
+    # Render passes the port as an environment variable
     port = int(os.environ.get("PORT", 3000))
     
     print(f"Starting Cloudlink server on port {port}...")
     
-    # Initialize Cloudlink Server
-    cl = CloudLink(debug=True)
+    # Initialize Cloudlink Server (v0.2 uses lowercase 'l')
+    cl = cloudlink.cloudlink(debug=True)
     cl.server(host="0.0.0.0", port=port)
+
