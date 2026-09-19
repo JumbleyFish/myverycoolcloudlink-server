@@ -1,5 +1,5 @@
 import os
-import cloudlink
+from cloudlink import CloudLink
 
 if __name__ == "__main__":
     # Render passes the port as an environment variable
@@ -7,8 +7,8 @@ if __name__ == "__main__":
     
     print(f"Starting Cloudlink server on port {port}...")
     
-    # Initialize the core cloudlink object framework
-    cl = cloudlink.cloudlink()
+    # Initialize the correct capital CloudLink engine wrapper
+    cl = CloudLink()
     
-    # Run the server using its built-in method
+    # Start the server listening routine
     cl.server(host="0.0.0.0", port=port)
