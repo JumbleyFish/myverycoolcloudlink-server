@@ -1,15 +1,14 @@
 import os
-import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import PlainTextResponse
 
 app = FastAPI()
 CONNECTED_USERS = set()
 
-# --- HEALTH CHECK FOR CRON-JOB.ORG ---
-@app.get("/")
+# --- NEW PATH FOR THE CRON MONITOR ---
+@app.get("/ping")
 async def health_check():
-    # Returns a valid HTTP 200 response that satisfies the pinger
+    # Dedicated regular HTTP path that avoids the 426 WebSocket rule
     return PlainTextResponse("Server Alive")
 
 # --- TURBOWARP MULTIPLAYER CONNECTIONS ---
@@ -21,10 +20,7 @@ async def websocket_endpoint(websocket: WebSocket):
     
     try:
         while True:
-            # Listen for continuous TurboWarp data messages
             message = await websocket.receive_text()
-            
-            # Broadcast incoming data to all other online players
             for user in list(CONNECTED_USERS):
                 if user != websocket:
                     try:
@@ -41,5 +37,4 @@ async def websocket_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 10000))
-    print(f"🚀 Custom TurboWarp Server running on port {port}...")
     uvicorn.run(app, host="0.0.0.0", port=port)
